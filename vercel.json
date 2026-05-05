@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control",          "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/api/ai",     "destination": "/api/ai.py"     },
+    { "source": "/api/config", "destination": "/api/config.py" }
+  ]
+}

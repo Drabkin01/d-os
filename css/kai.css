@@ -1,0 +1,901 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   KAI Avatar System — display cards + animation engine
+   Colours: red (health), green (finances), blue (intelligence), purple (work)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── CSS accent variable (set by JS from calendar activity) ──────────────── */
+:root {
+  --kai-accent:      #FF69B4;
+  --kai-accent-dim:  #7A3256;
+  --kai-accent-lite: #FF8EC7;
+  --kai-accent-rgb:  255,105,180;
+  /* KAI character colours — editable via colour panel */
+  --kai-skin:        #F0BA8F;   /* skin tone */
+  --kai-gi:          #111111;   /* clothing — gi, pants, shoes, sleeves */
+  --kai-mask:        #111111;   /* face scarf / neck covering */
+  --kai-hair:        #5E5E69;   /* hair colour */
+  --kai-sword:       var(--kai-accent); /* sword / weapon decals */
+  --kai-outline:     rgba(255,255,255,0.28); /* stroke outlines — light for dark bg */
+  --kai-dark:        #1a1a2e;
+}
+
+/* ── Shared card shell ───────────────────────────────────────────────────── */
+.kai-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-lite);
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD DISPLAY CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kai-dashboard-card {
+  margin: 0 0 16px;
+}
+
+.kai-dash-inner {
+  display: flex;
+  align-items: stretch;
+  min-height: 200px;
+}
+
+/* Left: avatar stage */
+.kai-stage {
+  flex: 0 0 175px;
+  min-height: 250px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  position: relative;
+  background: linear-gradient(180deg, transparent 60%, rgba(var(--kai-accent-rgb,204,26,26),0.06) 100%);
+  transition: background 0.6s;
+}
+
+.kai-stage::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 40%;
+  background: radial-gradient(ellipse at 50% 100%, rgba(var(--kai-accent-rgb,204,26,26),0.12) 0%, transparent 70%);
+  pointer-events: none;
+  transition: background 0.6s;
+}
+
+/* Right: info panel */
+.kai-info-panel {
+  flex: 1;
+  padding: 16px 14px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+
+.kai-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kai-display-name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.kai-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--kai-accent);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--kai-accent);
+  transition: border-color 0.4s, color 0.4s;
+}
+
+.kai-activity-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-section);
+  border: 1px solid var(--border-lite);
+  border-radius: 10px;
+  padding: 7px 10px;
+  min-height: 38px;
+}
+
+.kai-activity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kai-accent);
+  flex-shrink: 0;
+  transition: background 0.4s;
+  animation: kai-pulse 2.4s ease-in-out infinite;
+}
+
+.kai-activity-text {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+
+.kai-activity-label {
+  display: block;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+/* Mini stat grid */
+.kai-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.kai-mini-stat {
+  background: var(--bg-section);
+  border-radius: 7px;
+  padding: 5px 3px;
+  text-align: center;
+}
+
+.kai-mini-val {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.kai-mini-val.health      { color: #FF4500; }
+.kai-mini-val.finances    { color: #FFD700; }
+.kai-mini-val.intelligence{ color: #00C896; }
+.kai-mini-val.work        { color: #00BFFF; }
+
+.kai-mini-lbl {
+  display: block;
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
+/* Streak pill */
+.kai-streak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROFILE CUSTOMISATION CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kai-profile-card {
+  margin: 16px 16px 0;
+  padding: 16px;
+}
+
+.kai-profile-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.kai-profile-body {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Avatar preview in profile */
+.kai-profile-stage {
+  flex: 0 0 130px;
+  height: 195px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--bg-section);
+  border: 1px solid var(--border-lite);
+  border-radius: 14px;
+  padding-bottom: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.kai-profile-stage::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 35%;
+  background: radial-gradient(ellipse at 50% 100%, rgba(var(--kai-accent-rgb,204,26,26),0.1) 0%, transparent 70%);
+  pointer-events: none;
+  transition: background 0.4s;
+}
+
+/* Controls panel */
+.kai-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kai-ctrl-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Gender toggle */
+.kai-gender-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.kai-toggle-btn {
+  flex: 1;
+  padding: 7px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border-lite);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.kai-toggle-btn.active {
+  border-color: var(--kai-accent);
+  color: var(--kai-accent);
+  background: rgba(var(--kai-accent-rgb,204,26,26),0.07);
+}
+
+/* Name input */
+.kai-name-input {
+  width: 100%;
+  background: var(--bg-section);
+  border: 1px solid var(--border-lite);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.kai-name-input:focus {
+  outline: none;
+  border-color: var(--kai-accent);
+}
+
+/* Save button */
+.kai-save-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.kai-save-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 10px;
+  border: none;
+  background: var(--kai-accent);
+  color: white;
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.4s;
+  font-family: inherit;
+}
+.kai-save-btn:active { opacity: 0.8; }
+
+.kai-preview-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-lite);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KAI PERSISTENT COMPANION STRIP
+   Fixed bubble, bottom-left, always on screen
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.kai-companion {
+  position: fixed;
+  bottom: calc(64px + 12px);   /* above bottom nav */
+  left: 14px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--kai-accent);
+  box-shadow: 0 4px 20px rgba(var(--kai-accent-rgb,255,105,180), 0.35),
+              0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  z-index: 900;
+  transition: border-color 0.4s, box-shadow 0.4s, transform 0.18s;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kai-companion:active { transform: scale(0.92); }
+
+.kai-companion-avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+}
+.kai-companion-avatar svg {
+  width: 52px !important;
+  height: 52px !important;
+  flex-shrink: 0;
+}
+
+/* Pulsing status dot */
+.kai-companion-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--kai-accent);
+  border: 2px solid var(--bg-card);
+  transition: background 0.4s;
+  animation: kai-pulse 2.4s ease-in-out infinite;
+}
+
+/* ── Speech bubble ─────────────────────────────────────────────────────────── */
+.kai-speech-bubble {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1.5px solid var(--kai-accent);
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  max-width: 220px;
+  white-space: normal;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(var(--kai-accent-rgb,255,105,180),0.25);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
+  transition: opacity 0.22s, transform 0.22s;
+  z-index: 910;
+}
+.kai-speech-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--kai-accent);
+}
+.kai-speech-bubble.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── KAI Bottom Sheet ──────────────────────────────────────────────────────── */
+.kai-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 950;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s;
+  backdrop-filter: blur(4px);
+}
+.kai-sheet-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.kai-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0; right: 0;
+  background: var(--bg-card);
+  border-radius: 24px 24px 0 0;
+  z-index: 960;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 8px);
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 88vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 -4px 40px rgba(0,0,0,0.4);
+}
+.kai-bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.kai-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border-lite);
+  border-radius: 2px;
+  margin: 12px auto 4px;
+}
+
+#kai-sheet-body {
+  padding: 8px 16px 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE TRANSITIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.view {
+  display: none;
+  animation: none;
+}
+.view.active {
+  display: block;
+}
+.view.page-enter-right {
+  animation: page-slide-in-right 0.22s cubic-bezier(0.22,1,0.36,1) both;
+}
+.view.page-enter-left {
+  animation: page-slide-in-left 0.22s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+@keyframes page-slide-in-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes page-slide-in-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARD STAGGER ENTRANCE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.card-stagger {
+  animation: card-rise 0.32s cubic-bezier(0.22,1,0.36,1) both;
+  animation-delay: calc(var(--stagger-i, 0) * 55ms);
+}
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SLIDING NAV PILL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.bottom-nav {
+  position: relative; /* pill positions relative to this */
+}
+.nav-pill {
+  position: absolute;
+  top: 8px;
+  height: calc(100% - 16px);
+  background: rgba(var(--kai-accent-rgb,255,105,180), 0.13);
+  border-radius: 12px;
+  transition: left 0.28s cubic-bezier(0.22,1,0.36,1),
+              width 0.28s cubic-bezier(0.22,1,0.36,1),
+              background 0.4s;
+  pointer-events: none;
+  z-index: 0;
+}
+.nav-item {
+  position: relative;
+  z-index: 1;
+}
+.nav-item.active {
+  color: var(--kai-accent) !important;
+  transition: color 0.3s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCENT COLOUR BLEEDING — stat rings, card accents, headers
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Stat ring active stroke */
+.stat-ring-progress {
+  stroke: var(--kai-accent) !important;
+  transition: stroke 0.5s;
+}
+/* Card accent top border */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--kai-accent-rgb,255,105,180),0.6) 50%,
+    transparent 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.card:hover::before,
+.card:focus-within::before {
+  opacity: 1;
+}
+/* Section card header accent line */
+.card-header h2 {
+  border-left: 3px solid var(--kai-accent);
+  padding-left: 8px;
+  transition: border-color 0.4s;
+}
+/* Primary buttons use accent */
+.btn-primary {
+  background: var(--kai-accent) !important;
+  transition: background 0.4s, opacity 0.15s;
+}
+.btn-primary:active { opacity: 0.8; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MICRO-INTERACTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* All buttons: press scale */
+button:not(.nav-item):not(.kai-companion) {
+  transition: transform 0.1s, opacity 0.1s;
+}
+button:not(.nav-item):not(.kai-companion):active {
+  transform: scale(0.96);
+}
+
+/* ── Scroll-aware header ────────────────────────────────────────────────── */
+.app-header.scrolled {
+  background: rgba(var(--bg-card-rgb, 20,20,30), 0.92) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.3);
+}
+.app-header {
+  transition: background 0.3s, box-shadow 0.3s, backdrop-filter 0.3s;
+}
+
+/* ── Level up flash ─────────────────────────────────────────────────────── */
+.level-up-flash {
+  animation: level-flash 1.2s ease-out;
+}
+@keyframes level-flash {
+  0%   { filter: brightness(1); }
+  20%  { filter: brightness(2.2) drop-shadow(0 0 8px var(--kai-accent)); }
+  60%  { filter: brightness(1.4); }
+  100% { filter: brightness(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SVG CHIBI — Animation engine
+   Animations applied directly to .kai-svg (the element itself).
+   .kai-familiar-orb is a separate positioned div for the companion orb.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Base SVG element — needed for translateY animations to feel grounded */
+.kai-svg {
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+/* ── Per-activity animations on .kai-svg ────────────────────────────────── */
+.kai-anim-idle         { animation: kai-bob        3s    ease-in-out infinite; }
+.kai-anim-fitness      { animation: kai-jump       0.75s ease-in-out infinite; }
+.kai-anim-work         { animation: kai-work-sway  4s    ease-in-out infinite; }
+.kai-anim-intelligence { animation: kai-bob        4s    ease-in-out infinite; }
+.kai-anim-finances     { animation: kai-bob        3s    ease-in-out infinite; }
+.kai-anim-sleep        { animation: kai-breathe    4.5s  ease-in-out infinite; }
+.kai-anim-martial      { animation: kai-jump       0.9s  ease-in-out infinite; }
+.kai-anim-wellness     { animation: kai-bob        5s    ease-in-out infinite; }
+.kai-anim-creative     { animation: kai-work-sway  3.5s  ease-in-out infinite; }
+.kai-anim-social       { animation: kai-bob        2.5s  ease-in-out infinite; }
+.kai-anim-lazy         { animation: kai-breathe    7s    ease-in-out infinite; }
+.kai-anim-dead         { animation: kai-breathe   12s    ease-in-out infinite; }
+
+/* Override animation for tap reaction (uses !important to win over anim-* class) */
+.kai-svg.kai-tap-bounce {
+  animation: kai-tap-react 0.42s cubic-bezier(0.22,1,0.36,1) !important;
+}
+@keyframes kai-tap-react {
+  0%   { transform: scale(1) translateY(0); }
+  28%  { transform: scale(0.9) translateY(5px); }
+  60%  { transform: scale(1.1) translateY(-12px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes kai-bob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+
+@keyframes kai-jump {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  25%       { transform: translateY(-16px) scaleX(1.04); }
+  50%       { transform: translateY(-20px) scaleX(1); }
+  75%       { transform: translateY(-10px); }
+}
+
+@keyframes kai-work-sway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-4px) rotate(-1deg); }
+}
+
+/* Kept for reference when SVG groups are wired up in future */
+@keyframes kai-swing-l {
+  0%, 100% { transform: rotate(0deg); }
+  30%      { transform: rotate(-35deg); }
+  60%      { transform: rotate(15deg); }
+}
+@keyframes kai-swing-r {
+  0%, 100% { transform: rotate(0deg); }
+  30%      { transform: rotate(35deg); }
+  60%      { transform: rotate(-15deg); }
+}
+@keyframes kai-familiar-fast {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  50%       { transform: translate(5px,-10px) scale(1.08); }
+}
+@keyframes kai-reach-forward {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  40%       { transform: rotate(-22deg) translateY(-5px); }
+  70%       { transform: rotate(-10deg) translateY(-2px); }
+}
+@keyframes kai-read-nod {
+  0%, 100% { transform: rotate(0deg); }
+  30%       { transform: rotate(-7deg); }
+  65%       { transform: rotate(4deg); }
+}
+@keyframes kai-hold-book {
+  0%, 100% { transform: rotate(-15deg); }
+  50%       { transform: rotate(-20deg) translateY(-3px); }
+}
+@keyframes kai-coin-toss {
+  0%, 55%, 100% { transform: rotate(0deg) translateY(0); }
+  25%            { transform: rotate(-38deg) translateY(-8px); }
+  40%            { transform: rotate(-20deg) translateY(-4px); }
+}
+
+/* ── Sleep / rest ───────────────────────────────────────────────────────── */
+
+@keyframes kai-breathe {
+  0%, 100% { transform: scaleY(1) translateY(0); }
+  50%       { transform: scaleY(1.03) translateY(-3px); }
+}
+@keyframes kai-droop {
+  0%, 100% { transform: rotate(0deg); }
+  50%       { transform: rotate(10deg) translateY(4px); }
+}
+
+/* ── Shared familiar float ──────────────────────────────────────────────── */
+@keyframes kai-familiar-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(4px, -9px) scale(1.05); }
+  66%       { transform: translate(-3px, -5px) scale(0.96); }
+}
+
+/* ── Pulse for activity dot ─────────────────────────────────────────────── */
+@keyframes kai-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(0.7); opacity: 0.5; }
+}
+
+/* ── Zzz float (sleep state decorative) ────────────────────────────────── */
+.kai-zzz {
+  font-size: 0.7rem;
+  font-weight: 900;
+  fill: #3b82f6;
+  animation: kai-zzz-float 2s ease-in-out infinite;
+}
+.kai-zzz:nth-child(2) { animation-delay: 0.6s; font-size: 0.85rem; }
+.kai-zzz:nth-child(3) { animation-delay: 1.2s; font-size: 1rem; }
+
+@keyframes kai-zzz-float {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  40%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(8px, -18px) scale(1.1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLOUR EDITOR PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kai-colour-section {
+  margin-top: 12px;
+  border-top: 1px solid var(--border-lite);
+  padding-top: 10px;
+}
+
+.kai-colour-toggle {
+  background: none;
+  border: 1px solid var(--border-lite);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s, color 0.15s;
+}
+.kai-colour-toggle:hover {
+  background: var(--bg-section);
+  color: var(--text);
+}
+
+.kai-colour-panel {
+  margin-top: 10px;
+  animation: kai-panel-in 0.18s ease;
+}
+@keyframes kai-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kai-colour-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.kai-colour-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-section);
+  border: 1px solid var(--border-lite);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.kai-colour-row:hover { border-color: var(--kai-accent); }
+
+.kai-colour-row input[type="color"] {
+  width: 28px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  flex-shrink: 0;
+}
+.kai-colour-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.kai-colour-row input[type="color"]::-webkit-color-swatch {
+  border: 1px solid var(--border-lite);
+  border-radius: 4px;
+}
+
+.kai-colour-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ── Familiar Orb ─────────────────────────────────────────────────────────── */
+.kai-familiar-orb {
+  position: absolute;
+  top: 22px;
+  right: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--kai-accent);
+  box-shadow: 0 0 6px var(--kai-accent), 0 0 14px rgba(var(--kai-accent-rgb,204,26,26),0.35);
+  animation: kai-familiar-float 3.5s ease-in-out infinite;
+  pointer-events: none;
+  transition: background 0.4s, box-shadow 0.4s;
+  z-index: 2;
+}
+.kai-familiar-orb::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--kai-accent-rgb,204,26,26),0.25);
+  animation: kai-orb-ring 2.2s ease-in-out infinite;
+}
+@keyframes kai-orb-ring {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%       { transform: scale(1.5); opacity: 0; }
+}
+
+/* ── Today at a glance strip ─────────────────────────────────────────────── */
+.kai-today-strip {
+  border-top: 1px solid var(--border-lite);
+  padding-top: 8px;
+  margin-top: 2px;
+  min-height: 26px;
+}
+.kai-today-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.kai-today-chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border-lite);
+  color: var(--text-sub);
+  line-height: 1.6;
+}
+.kai-today-empty {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ── Mini stat tappable ──────────────────────────────────────────────────── */
+.kai-mini-stat {
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+.kai-mini-stat:active { transform: scale(0.93); }
+.kai-mini-stat:hover  { background: var(--bg-card); }
+
+/* ── Appearance pickers ──────────────────────────────────────────────────── */
+.kai-appearance-pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.kai-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+.kai-picker-row input[type=color] {
+  width: 36px;
+  height: 24px;
+  border: 1px solid var(--border-lite);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  padding: 1px 2px;
+}

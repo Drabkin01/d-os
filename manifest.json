@@ -1,0 +1,45 @@
+{
+  "name": "D-OS · Digital Operating System",
+  "short_name": "D-OS",
+  "description": "Personal operating system — track health, finances, intelligence and work.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#cc1a1a",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "health", "finance", "lifestyle"],
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Workout",
+      "short_name": "Workout",
+      "url": "/?view=health",
+      "description": "Log a training session"
+    },
+    {
+      "name": "Log Expense",
+      "short_name": "Expense",
+      "url": "/?view=finances",
+      "description": "Log an expense"
+    },
+    {
+      "name": "Daily Briefing",
+      "short_name": "Briefing",
+      "url": "/?briefing=1",
+      "description": "Open the AI daily briefing"
+    }
+  ]
+}
