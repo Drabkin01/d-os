@@ -8,7 +8,7 @@ function renderWork() {
   const container = document.getElementById('work-content');
   if (!container) return;
 
-  container.innerHTML = `
+  container.innerHTML = buildStatAICard('work') + `
     <nav class="fin-tabs">
       <button class="fin-tab" data-tab="tickets"  onclick="switchWorkTab('tickets')">Tickets</button>
       <button class="fin-tab" data-tab="calendar" onclick="switchWorkTab('calendar')">Calendar</button>

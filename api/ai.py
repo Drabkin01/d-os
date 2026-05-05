@@ -11,7 +11,7 @@ import os
 import urllib.request
 import urllib.error
 
-GEMINI_MODEL = 'gemini-1.5-flash'
+GEMINI_MODEL = 'gemini-2.0-flash'
 
 
 class handler(BaseHTTPRequestHandler):

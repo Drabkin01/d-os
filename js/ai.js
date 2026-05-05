@@ -32,17 +32,6 @@ Respond ONLY with valid JSON. No markdown code fences, no explanation outside th
   "focusStat": "health|finances|intelligence|work"
 }`;
 
-// ── ISO Week Helper ───────────────────────────────────────────────────────────
-
-function getISOWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return d.getUTCFullYear() + '-W' +
-    String(Math.ceil((((d - yearStart) / 86400000) + 1) / 7)).padStart(2, '0');
-}
-
 // ── Context Builder ───────────────────────────────────────────────────────────
 
 function buildAIContext() {
@@ -268,6 +257,91 @@ function renderFocusPlaceholder() {
 function renderFocusFromStorage() {
   const briefing = loadLastBriefing();
   briefing ? renderTodaysFocus(briefing) : renderFocusPlaceholder();
+}
+
+// ── Per-stat AI ───────────────────────────────────────────────────────────────
+
+const STAT_AI_PROMPTS = {
+  health: `You are the D-OS health coach for Liam Caldwell.
+Profile: CrossFit, BJJ, Muay Thai athlete. Goal: Russia 2027 Dagestan BJJ trip — needs 3x BJJ/week. Watch overtraining across 3 disciplines.
+Return ONLY valid JSON (no fences): { "action": "one concrete action today", "why": "data-driven reason from his numbers", "flag": "one blunt observation or null" }`,
+
+  finances: `You are the D-OS finance analyst for Liam Caldwell.
+Profile: R19,200/month income, ~R12,809 fixed costs. Saving R73,000 for Russia 2027. Caleb Hammer energy — blunt, data-driven, call out waste by name.
+Return ONLY valid JSON (no fences): { "action": "one concrete money action today", "why": "data-driven reason from his numbers", "flag": "one blunt observation or null" }`,
+
+  intelligence: `You are the D-OS study coach for Liam Caldwell.
+Profile: AWS CCP in progress (target May 2026), then SAA → AI/ML Specialty. Learning Russian for Russia 2027. Technical Support Engineer at truID.
+Return ONLY valid JSON (no fences): { "action": "one concrete study action today", "why": "data-driven reason from his numbers", "flag": "one blunt observation or null" }`,
+
+  work: `You are the D-OS work strategist for Liam Caldwell.
+Profile: Technical Support Engineer at truID (SA FinTech). Personal projects: D-OS, Solar Sim, LevelUp App. Push momentum on personal projects, not just ticket management.
+Return ONLY valid JSON (no fences): { "action": "one concrete work action today", "why": "data-driven reason from his numbers", "flag": "one blunt observation or null" }`
+};
+
+function buildStatContext(stat) {
+  const full = buildAIContext();
+  const map  = { health: full.health, finances: full.finances, intelligence: full.intelligence, work: full.work };
+  return { stat, date: full.date, statLevels: full.statLevels, data: map[stat] || {}, russia2027: full.russia2027 };
+}
+
+async function askStatAI(stat) {
+  const btn = document.getElementById('stat-ai-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Thinking...'; }
+
+  try {
+    const resp = await fetch('/api/ai', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        system:   STAT_AI_PROMPTS[stat],
+        messages: [{ role: 'user', content: JSON.stringify(buildStatContext(stat)) }]
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `Server error ${resp.status}`);
+
+    const cleaned = data.content.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+    const result  = JSON.parse(cleaned);
+    localStorage.setItem(`dos_ai_${stat}`, JSON.stringify({ ...result, date: today() }));
+
+    const renders = { health: renderHealth, finances: renderFinances, intelligence: renderIntelligence, work: renderWork };
+    if (renders[stat]) renders[stat]();
+
+  } catch (err) {
+    showToast(`AI error: ${err.message}`, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✦ Ask AI'; }
+  }
+}
+
+function clearStatAI(stat) {
+  localStorage.removeItem(`dos_ai_${stat}`);
+  const renders = { health: renderHealth, finances: renderFinances, intelligence: renderIntelligence, work: renderWork };
+  if (renders[stat]) renders[stat]();
+}
+
+function buildStatAICard(stat) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(`dos_ai_${stat}`) || 'null');
+    if (stored && stored.date === today()) {
+      return `
+        <section class="card" style="border-left:3px solid var(--${stat});padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:0.68rem;font-weight:700;letter-spacing:.06em;color:var(--${stat});text-transform:uppercase">AI Focus</span>
+            <button class="btn btn-sm" onclick="clearStatAI('${stat}')" style="font-size:0.7rem;padding:2px 8px">↺ Refresh</button>
+          </div>
+          <div style="font-size:0.88rem;font-weight:600;color:var(--text-main);margin-bottom:4px">${stored.action}</div>
+          <div style="font-size:0.78rem;color:var(--text-sub);margin-bottom:${stored.flag ? '8px' : '0'}">${stored.why}</div>
+          ${stored.flag ? `<div style="font-size:0.76rem;color:var(--text-dim);border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-style:italic">"${stored.flag}"</div>` : ''}
+        </section>`;
+    }
+  } catch { /* fall through */ }
+  return `
+    <section class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px">
+      <span style="font-size:0.78rem;color:var(--text-sub)">Get AI analysis for ${capitalize(stat)}</span>
+      <button id="stat-ai-btn" class="btn btn-outline btn-sm" onclick="askStatAI('${stat}')">✦ Ask AI</button>
+    </section>`;
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────

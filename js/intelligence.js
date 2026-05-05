@@ -8,7 +8,7 @@ function renderIntelligence() {
   const container = document.getElementById('intelligence-content');
   if (!container) return;
 
-  container.innerHTML = `
+  container.innerHTML = buildStatAICard('intelligence') + `
     <nav class="fin-tabs">
       <button class="fin-tab" data-tab="certs"     onclick="switchIntelTab('certs')">Certs</button>
       <button class="fin-tab" data-tab="languages" onclick="switchIntelTab('languages')">🇷🇺 Russian</button>

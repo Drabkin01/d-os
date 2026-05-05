@@ -12,7 +12,7 @@ function renderFinances() {
   const container = document.getElementById('finances-content');
   if (!container) return;
   ensureGroceryWeek();
-  container.innerHTML = `
+  container.innerHTML = buildStatAICard('finances') + `
     <nav class="fin-tabs">
       <button class="fin-tab" data-tab="overview"  onclick="switchFinTab('overview')">Overview</button>
       <button class="fin-tab" data-tab="grocery"   onclick="switchFinTab('grocery')">Grocery</button>
@@ -890,10 +890,3 @@ function renderCategoryDonutChart() {
   });
 }
 
-function getISOWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return `${d.getUTCFullYear()}-W${String(Math.ceil((((d-yearStart)/86400000)+1)/7)).padStart(2,'0')}`;
-}

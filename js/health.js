@@ -37,7 +37,7 @@ function dosLegend() {
 function renderHealth() {
   const container = document.getElementById('health-content');
   if (!container) return;
-  container.innerHTML = `
+  container.innerHTML = buildStatAICard('health') + `
     <nav class="fin-tabs">
       <button class="fin-tab" data-tab="log"       onclick="switchHealthTab('log')">Log</button>
       <button class="fin-tab" data-tab="history"   onclick="switchHealthTab('history')">History</button>
@@ -581,10 +581,3 @@ function renderWorkoutSplitChart() {
   });
 }
 
-function getISOWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay()||7;
-  d.setUTCDate(d.getUTCDate()+4-dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return `${d.getUTCFullYear()}-W${String(Math.ceil((((d-yearStart)/86400000)+1)/7)).padStart(2,'0')}`;
-}
